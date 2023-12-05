@@ -4,6 +4,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import cv2
+import latentvideodiffusion.frame_extractor as frame_extractor
 
 def encode(video_path, vae_encoder, batch_size, key):
     encoded_frames = []

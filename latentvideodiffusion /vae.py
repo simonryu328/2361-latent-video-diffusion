@@ -3,10 +3,13 @@ import os
 import jax
 import jax.numpy as jnp
 import optax
+import cv2
+import argparse
 
 import latentvideodiffusion as lvd
 import latentvideodiffusion.models.frame_vae as frame_vae
 import latentvideodiffusion.frame_extractor
+import latentvideodiffusion.frame_transcode as ft
 
 #Gaussian VAE primitives
 def gaussian_kl_divergence(p, q):
@@ -57,10 +60,12 @@ def vae_loss(vae, data, key):
 
     return loss
 
-def make_vae(n_latent, size_multipier, key):
+def make_vae(n_latent, input_size, size_multipier, key):
+
     enc_key, dec_key = jax.random.split(key)
-    e = frame_vae.VAEEncoder(n_latent, size_multipier, enc_key)
-    d = frame_vae.VAEDecoder(n_latent, size_multipier, dec_key)
+
+    e = frame_vae.VAEEncoder(n_latent, input_size, size_multipier, enc_key)
+    d = frame_vae.VAEDecoder(n_latent, input_size, size_multipier, dec_key)
     
     vae = e,d
     return vae
@@ -74,9 +79,17 @@ def sample_vae(n_latent, n_samples, vae, key):
     x = sample_gaussian(p_x, x_key)
     return x
 
+def reconstruct_vae(n_latent, n_samples, data_dir, vae, key):
+    z_key, x_key = jax.random.split(key)
+    encoder = vae[0]
+    decoder = vae[1]
+    encoded_frames = ft.encode(data_dir, encoder, n_samples, z_key)
+    decoded_frames = ft.decode(encoded_frames, decoder, x_key)
+    return decoded_frames
+
 def show_samples(samples):
-    y = jax.lax.clamp(0., x ,255.)
-    frame = np.array(y.transpose(2,1,0),dtype=np.uint8)
+    y = jax.lax.clamp(0., samples ,255.)
+    frame = jnp.array(y.transpose(2,1,0),dtype=jnp.uint8)
     cv2.imshow('Random Frame', frame)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -114,6 +127,18 @@ def sample(args, cfg):
     samples = sample_vae(n_latent, n_samples, trained_vae, key)
     lvd.utils.show_samples(samples)
 
+def reconstruct(args, cfg):
+    n_samples = cfg["vae"]["sample"]["n_sample"]
+    n_latent = cfg["lvm"]["n_latent"]
+    video_dir = cfg["vae"]["data_dir"]
+
+    state = lvd.utils.load_checkpoint(args.checkpoint)
+    trained_vae = state[0]
+
+    key = jax.random.PRNGKey(cfg["seed"])
+    samples = reconstruct_vae(n_latent, n_samples, video_dir, trained_vae, key)
+    lvd.utils.show_samples(samples)
+
 def train(args, cfg):
     ckpt_dir = cfg["vae"]["train"]["ckpt_dir"]
     lr = cfg["vae"]["train"]["lr"]
@@ -129,7 +154,7 @@ def train(args, cfg):
     if args.checkpoint is None:
         key = jax.random.PRNGKey(cfg["seed"])
         init_key, state_key = jax.random.split(key)
-        vae = make_vae(cfg["lvm"]["n_latent"], cfg["vae"]["size_multiplier"], init_key)
+        vae = make_vae(cfg["lvm"]["n_latent"], cfg["transcode"]["target_size"],cfg["vae"]["size_multiplier"], init_key)
         opt_state = optimizer.init(vae)
         i = 0
         state = vae, opt_state, state_key, i
@@ -147,9 +172,18 @@ def train(args, cfg):
             for _ in lvd.utils.tqdm_inf():
                 data = jnp.array(next(fe),dtype=jnp.float32)
                 loss, state = lvd.utils.update_state(state, data, optimizer, vae_loss)
+
+                # iteration = state[3]
+                # print("iteration ", iteration)
+                # if iteration == 1:
+                #     print("SAVING")
+                #     ckpt_path = lvd.utils.ckpt_path(ckpt_dir, 0, "simonvae")
+                #     lvd.utils.save_checkpoint(state, ckpt_path)
+
                 f.write(f"{loss}\n")
                 f.flush()
                 iteration = state[3]
                 if (iteration % ckpt_interval) == (ckpt_interval - 1):
                     ckpt_path = lvd.utils.ckpt_path(ckpt_dir, iteration+1, "vae")
                     lvd.utils.save_checkpoint(state, ckpt_path)
+                    print("---------CHECKPOINT SAVED----------")

@@ -42,6 +42,14 @@ def parse_args():
     sample_vae_parser.add_argument('--checkpoint', type=str, required=True,
                                          help='Checkpoint iteration to load state from.')
 
+    # Reconstructing arguments for VAE
+    reconstruct_vae_parser = subparsers.add_parser('reconstruct_vae')
+    reconstruct_vae_parser.set_defaults(func=reconstruct_vae)
+    reconstruct_vae_parser.add_argument('--checkpoint', type=str, required=True,
+                                         help='Checkpoint iteration to load state from.')
+    reconstruct_vae_parser.add_argument('--data_dir', type=str, required=True,
+                                         help='Directory with video')
+
     # Encoding arguments
     encode_parser = subparsers.add_parser('encode')
     encode_parser.set_defaults(func=encode_frames)
@@ -77,6 +85,10 @@ def sample_vae(args):
     cfg = lvd.utils.load_config(args.config_file)
     lvd.vae.sample(args, cfg)
 
+def reconstruct_vae(args):
+    cfg = lvd.utils.load_config(args.config_file)
+    lvd.vae.reconstruct(args, cfg)
+
 def sample_diffusion(args):
     cfg = lvd.utils.load_config(args.config_file)
     lvd.diffusion.sample(args, cfg)
@@ -91,3 +103,28 @@ def plot_loss(args):
 
 if __name__ == "__main__":
     main()
+
+
+# def train_vae(args):
+#     cfg = lvd.utils.load_config(args.config_file)
+#     lvd.vae.train(args, cfg)
+
+# def train_diffusion(args):
+#     cfg = lvd.utils.load_config(args.config_file)
+#     lvd.diffusion.train(args, cfg)
+
+# def sample_vae(args):
+#     cfg = lvd.utils.load_config(args.config_file)
+#     lvd.vae.sample(args, cfg)
+
+# def sample_diffusion(args):
+#     cfg = lvd.utils.load_config(args.config_file)
+#     lvd.diffusion.sample(args, cfg)
+
+# def encode_frames(args):
+#     cfg = lvd.utils.load_config(args.config_file)
+#     lvd.utils.encode_frames(args, cfg)
+
+# def plot_loss(args):
+#     cfg = lvd.utils.load_config(args.config_file)
+#     lvd.plot.plot_loss(args, cfg)

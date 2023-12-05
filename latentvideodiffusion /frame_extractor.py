@@ -4,13 +4,14 @@ import numpy as np
 import os
 
 class FrameExtractor:
-    def __init__(self, directory_path, batch_size, key):
+    def __init__(self, directory_path, batch_size, key, target_size=(512,300)):
         self.directory_path = directory_path
         self.video_files = [f for f in os.listdir(directory_path) if f.endswith(('.mp4', '.avi'))] # Adjust as needed
         self.batch_size = batch_size
         self.key = key
         self.total_frames = sum(int(cv2.VideoCapture(os.path.join(directory_path, f)).get(cv2.CAP_PROP_FRAME_COUNT)) for f in self.video_files)
         self.cap = None
+        self.target_size = target_size
 
     def __enter__(self):
         return self
@@ -38,6 +39,8 @@ class FrameExtractor:
             self.cap.release()
 
             if ret:
+                #resize video to specified target size
+                frame = cv2.resize(frame, self.target_size)
                 frames.append(frame)
 
         array = jax.numpy.array(frames)

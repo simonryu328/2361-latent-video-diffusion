@@ -71,6 +71,10 @@ def sample_diffusion(inputs, model, f_neg_gamma, key, n_steps, shape):
     time_steps = jnp.linspace(0, 1, num=n_steps+1)
 
     n_samples = inputs.shape[0]
+    print("inputs")
+    print(jnp.std(inputs))
+    print(jnp.min(inputs))
+    print(jnp.max(inputs))
 
     z = jax.random.normal(key, (n_samples,) + shape)
     for i in range(n_steps):
@@ -88,7 +92,10 @@ def sample_diffusion(inputs, model, f_neg_gamma, key, n_steps, shape):
         z = (alpha_s/alpha_t)*(z + sigma_t*epsilon_hat*(k-1))
 
     outputs = z
-
+    print("outputs")
+    print(jnp.std(outputs))
+    print(jnp.min(outputs))
+    print(jnp.max(outputs))
     return outputs
 
 #@functools.partial(jax.jit, static_argnums=(2, 3))
@@ -113,38 +120,40 @@ def sample_datapoint(data, key):
     return prompt_sample,completion_sample
 
 def sample(args, cfg):
+    print("Entered Sample Function")
     n_samples = cfg["dt"]["sample"]["n_sample"]
     n_steps = cfg["dt"]["sample"]["n_steps"]
     n_latent = cfg["lvm"]["n_latent"]
     l_x = cfg["dt"]["l_x"]
     l_y = cfg["dt"]["l_y"]
 
-    with jax.default_device(jax.devices("cpu")[0]):
+    #with jax.default_device(jax.devices("cpu")[0]):
 
-        vae_state = lvd.utils.load_checkpoint(args.vae_checkpoint)
-        trained_vae = vae_state[0]
-        m_encoder, m_decoder = map(lambda x: jax.vmap(jax.vmap(x)), trained_vae)
+    vae_state = lvd.utils.load_checkpoint(args.vae_checkpoint)
+    print("loaded VAE checkpoint")
+    trained_vae = vae_state[0]
+    m_encoder, m_decoder = map(lambda x: jax.vmap(jax.vmap(x)), trained_vae)
 
-        dt_state = lvd.utils.load_checkpoint(args.diffusion_checkpoint)
-        trained_dt = dt_state[0]
+    dt_state = lvd.utils.load_checkpoint(args.diffusion_checkpoint)
+    trained_dt = dt_state[0]
 
 
-        key = jax.random.PRNGKey(cfg["seed"])
+    key = jax.random.PRNGKey(cfg["seed"])
 
-        data_key, dt_sample_key, encode_sample_key, decode_sample_key = jax.random.split(key, 4)
+    data_key, dt_sample_key, encode_sample_key, decode_sample_key = jax.random.split(key, 4)
 
-        with lvd.latent_dataset.LatentDataset(data_directory=args.data_dir, 
-            batch_size=n_samples, prompt_length=l_x, completion_length=l_y) as ld:
-            prompt_samples, completion_samples = sample_datapoint(next(ld), data_key)
-
-        latent_continuations = sample_diffusion(prompt_samples, trained_dt, f_neg_gamma, dt_sample_key, n_steps, completion_samples.shape[1:])
-
-        continuation_frames = lvd.vae.sample_gaussian(m_decoder(latent_continuations), decode_sample_key)
-        print(continuation_frames.shape)
-        
-        for sample in continuation_frames:
-            print(sample.shape)
-            lvd.utils.show_samples(sample)
+    with lvd.latent_dataset.LatentDataset(data_directory=args.data_dir, 
+        batch_size=n_samples, prompt_length=l_x, completion_length=l_y) as ld:
+        prompt_samples, completion_samples = sample_datapoint(next(ld), data_key)
+    print("a")
+    latent_continuations = sample_diffusion(prompt_samples, trained_dt, f_neg_gamma, dt_sample_key, n_steps, completion_samples.shape[1:])
+    print("b")
+    continuation_frames = lvd.vae.sample_gaussian(m_decoder(latent_continuations), decode_sample_key)
+    print(continuation_frames.shape)
+    
+    for sample in continuation_frames:
+        print(str(sample.shape) + "Generated Sample Shape")
+        lvd.utils.show_samples(sample)
 
 def train(args, cfg):
     key = jax.random.PRNGKey(cfg["seed"])
