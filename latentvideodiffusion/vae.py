@@ -1,15 +1,14 @@
-import os
 
+import os
 import jax
 import jax.numpy as jnp
 import optax
 import cv2
 import argparse
 
-import latentvideodiffusion as lvd
-import latentvideodiffusion.models.frame_vae as frame_vae
-import latentvideodiffusion.frame_extractor
-import latentvideodiffusion.frame_transcode as ft
+from . import utils, frame_extractor, frame_transcode as ft
+from .models import frame_vae 
+
 
 #Gaussian VAE primitives
 def gaussian_kl_divergence(p, q):
@@ -120,24 +119,24 @@ def sample(args, cfg):
     n_samples = cfg["vae"]["sample"]["n_sample"]
     n_latent = cfg["lvm"]["n_latent"]
 
-    state = lvd.utils.load_checkpoint(args.checkpoint)
+    state = utils.load_checkpoint(args.checkpoint)
     trained_vae = state[0]
 
     key = jax.random.PRNGKey(cfg["seed"])
     samples = sample_vae(n_latent, n_samples, trained_vae, key)
-    lvd.utils.show_samples(samples)
+    utils.show_samples(samples)
 
 def reconstruct(args, cfg):
     n_samples = cfg["vae"]["sample"]["n_sample"]
     n_latent = cfg["lvm"]["n_latent"]
     video_dir = cfg["vae"]["data_dir"]
 
-    state = lvd.utils.load_checkpoint(args.checkpoint)
+    state = utils.load_checkpoint(args.checkpoint)
     trained_vae = state[0]
 
     key = jax.random.PRNGKey(cfg["seed"])
     samples = reconstruct_vae(n_latent, n_samples, video_dir, trained_vae, key)
-    lvd.utils.show_samples(samples)
+    utils.show_samples(samples)
 
 def train(args, cfg):
     ckpt_dir = cfg["vae"]["train"]["ckpt_dir"]
@@ -160,7 +159,7 @@ def train(args, cfg):
         state = vae, opt_state, state_key, i
     else:
         checkpoint_path = args.checkpoint
-        state = lvd.utils.load_checkpoint(checkpoint_path)
+        state = utils.load_checkpoint(checkpoint_path)
     
     dir_name = os.path.dirname(metrics_path)
     if not os.path.exists(dir_name):
@@ -168,22 +167,22 @@ def train(args, cfg):
 
     with open(metrics_path,"w") as f:
         #TODO: Fix Frame extractor rng
-        with lvd.frame_extractor.FrameExtractor(video_paths, batch_size, state[2]) as fe:
-            for _ in lvd.utils.tqdm_inf():
+        with frame_extractor.FrameExtractor(video_paths, batch_size, state[2]) as fe:
+            for _ in utils.tqdm_inf():
                 data = jnp.array(next(fe),dtype=jnp.float32)
-                loss, state = lvd.utils.update_state(state, data, optimizer, vae_loss)
+                loss, state = utils.update_state(state, data, optimizer, vae_loss)
 
                 # iteration = state[3]
                 # print("iteration ", iteration)
                 # if iteration == 1:
                 #     print("SAVING")
-                #     ckpt_path = lvd.utils.ckpt_path(ckpt_dir, 0, "simonvae")
-                #     lvd.utils.save_checkpoint(state, ckpt_path)
+                #     ckpt_path = utils.ckpt_path(ckpt_dir, 0, "simonvae")
+                #     utils.save_checkpoint(state, ckpt_path)
 
                 f.write(f"{loss}\n")
                 f.flush()
                 iteration = state[3]
                 if (iteration % ckpt_interval) == (ckpt_interval - 1):
-                    ckpt_path = lvd.utils.ckpt_path(ckpt_dir, iteration+1, "vae")
-                    lvd.utils.save_checkpoint(state, ckpt_path)
+                    ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "vae")
+                    utils.save_checkpoint(state, ckpt_path)
                     print("---------CHECKPOINT SAVED----------")

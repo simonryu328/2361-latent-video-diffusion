@@ -1,10 +1,7 @@
 import argparse
 
-import latentvideodiffusion as lvd
-import latentvideodiffusion.utils
-import latentvideodiffusion.vae
-import latentvideodiffusion.diffusion
-import latentvideodiffusion.plot
+from latentvideodiffusion  import utils,vae,diffusion,plot
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Generate Visualizations using VAE and Diffusion Transformer.')
@@ -74,57 +71,32 @@ def main():
     args.func(args)
 
 def train_vae(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.vae.train(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    vae.train(args, cfg)
 
 def train_diffusion(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.diffusion.train(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    diffusion.train(args, cfg)
 
 def sample_vae(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.vae.sample(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    vae.sample(args, cfg)
 
 def reconstruct_vae(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.vae.reconstruct(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    vae.reconstruct(args, cfg)
 
 def sample_diffusion(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.diffusion.sample(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    diffusion.sample(args, cfg)
 
 def encode_frames(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.utils.encode_frames(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    utils.encode_frames(args, cfg)
 
 def plot_loss(args):
-    cfg = lvd.utils.load_config(args.config_file)
-    lvd.plot.plot_loss(args, cfg)
+    cfg = utils.load_config(args.config_file)
+    plot.plot_loss(args, cfg)
 
 if __name__ == "__main__":
     main()
-
-
-# def train_vae(args):
-#     cfg = lvd.utils.load_config(args.config_file)
-#     lvd.vae.train(args, cfg)
-
-# def train_diffusion(args):
-#     cfg = lvd.utils.load_config(args.config_file)
-#     lvd.diffusion.train(args, cfg)
-
-# def sample_vae(args):
-#     cfg = lvd.utils.load_config(args.config_file)
-#     lvd.vae.sample(args, cfg)
-
-# def sample_diffusion(args):
-#     cfg = lvd.utils.load_config(args.config_file)
-#     lvd.diffusion.sample(args, cfg)
-
-# def encode_frames(args):
-#     cfg = lvd.utils.load_config(args.config_file)
-#     lvd.utils.encode_frames(args, cfg)
-
-# def plot_loss(args):
-#     cfg = lvd.utils.load_config(args.config_file)
-#     lvd.plot.plot_loss(args, cfg)

@@ -4,20 +4,21 @@
     "n_latent": 1024
   },
   "transcode": {
-    "bs": 32 
+    "bs": 32, 
+    "target_size": [512, 300]
   },
   "vae": {
     "size_multiplier": 1,
     "sample": {
-      "n_sample": 10
+      "n_sample": 8
     },
     "train": {
-      "ckpt_dir": "checkpoints",
-      "lr": 0.00005,
-      "ckpt_interval": 5000,
-      "data_dir": "data/recording",
-      "bs": 64,
-      "metrics_path": "logs/loss.txt",
+      "ckpt_dir": "../checkpoints",
+      "lr": 0.0001,
+      "ckpt_interval": 100,
+      "data_dir": "../data/single_recording",
+      "bs": 8,
+      "metrics_path": "../logs/loss_vae_single.txt",
       "clip_norm": 10
     }
   },
@@ -28,19 +29,19 @@
     "n_q": 4, 
     "d_qk": 128, 
     "d_dv": 128, 
-    "l_x": 64,
-    "l_y": 64,
+    "l_x": 8,
+    "l_y": 8,
     "sample": {
-      "n_sample": 10,
-      "n_steps": 10
+      "n_sample": 8,
+      "n_steps": 8
     },
     "train": {
-      "ckpt_dir": "checkpoints",
+      "ckpt_dir": "../checkpoints",
       "lr": 0.00005,
-      "ckpt_interval": 2000,
-      "data_dir": "data/recording",
+      "ckpt_interval": 50,
+      "data_dir": "../data/latent",
       "bs": 128,
-      "metrics_path": "logs/loss.txt",
+      "metrics_path": "../logs/loss_dt.txt",
       "clip_norm": 10
     }
   }

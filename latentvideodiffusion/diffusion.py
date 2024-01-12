@@ -3,11 +3,10 @@ import jax
 import jax.numpy as jnp
 import equinox as eqx
 
-import latentvideodiffusion as lvd
-import latentvideodiffusion.frame_transcode
-import latentvideodiffusion.latent_dataset
 
-import latentvideodiffusion.models.diffusion_transformer as diffusion_transformer
+from . import frame_transcode, latent_dataset, vae, utils 
+
+from  .models import diffusion_transformer as diffusion_transformer
 
 N_ITER = 1000
 LR = 0.0003
@@ -115,8 +114,8 @@ def sample_datapoint(data, key):
     prompt_key, completion_key = jax.random.split(key)
     
     prompt_dist, completion_dist = data
-    prompt_sample = lvd.vae.sample_gaussian(prompt_dist, prompt_key)
-    completion_sample = lvd.vae.sample_gaussian(prompt_dist,completion_key)
+    prompt_sample = vae.sample_gaussian(prompt_dist, prompt_key)
+    completion_sample = vae.sample_gaussian(prompt_dist,completion_key)
     return prompt_sample,completion_sample
 
 def sample(args, cfg):
@@ -129,12 +128,12 @@ def sample(args, cfg):
 
     #with jax.default_device(jax.devices("cpu")[0]):
 
-    vae_state = lvd.utils.load_checkpoint(args.vae_checkpoint)
+    vae_state = utils.load_checkpoint(args.vae_checkpoint)
     print("loaded VAE checkpoint")
     trained_vae = vae_state[0]
     m_encoder, m_decoder = map(lambda x: jax.vmap(jax.vmap(x)), trained_vae)
 
-    dt_state = lvd.utils.load_checkpoint(args.diffusion_checkpoint)
+    dt_state = utils.load_checkpoint(args.diffusion_checkpoint)
     trained_dt = dt_state[0]
 
 
@@ -142,18 +141,18 @@ def sample(args, cfg):
 
     data_key, dt_sample_key, encode_sample_key, decode_sample_key = jax.random.split(key, 4)
 
-    with lvd.latent_dataset.LatentDataset(data_directory=args.data_dir, 
+    with latent_dataset.LatentDataset(data_directory=args.data_dir, 
         batch_size=n_samples, prompt_length=l_x, completion_length=l_y) as ld:
         prompt_samples, completion_samples = sample_datapoint(next(ld), data_key)
     print("a")
     latent_continuations = sample_diffusion(prompt_samples, trained_dt, f_neg_gamma, dt_sample_key, n_steps, completion_samples.shape[1:])
     print("b")
-    continuation_frames = lvd.vae.sample_gaussian(m_decoder(latent_continuations), decode_sample_key)
+    continuation_frames = vae.sample_gaussian(m_decoder(latent_continuations), decode_sample_key)
     print(continuation_frames.shape)
     
     for sample in continuation_frames:
         print(str(sample.shape) + "Generated Sample Shape")
-        lvd.utils.show_samples(sample)
+        utils.show_samples(sample)
 
 def train(args, cfg):
     key = jax.random.PRNGKey(cfg["seed"])
@@ -188,19 +187,19 @@ def train(args, cfg):
         state = model, opt_state, state_key, i
     else:
         checkpoint_path = args.checkpoint
-        state = lvd.utils.load_checkpoint(checkpoint_path)
+        state = utils.load_checkpoint(checkpoint_path)
     
     with open(metrics_path,"w") as f:
         #TODO: Fix LatentDataset RNG
-        with lvd.latent_dataset.LatentDataset(data_directory=args.data_dir, 
+        with latent_dataset.LatentDataset(data_directory=args.data_dir, 
             batch_size=batch_size, prompt_length=l_x, completion_length=l_y) as ld:
-            for _ in lvd.utils.tqdm_inf():
+            for _ in utils.tqdm_inf():
                 data = sample_datapoint(next(ld),state[2])
-                loss, state = lvd.utils.update_state(state, data, optimizer, loss_fn)
+                loss, state = utils.update_state(state, data, optimizer, loss_fn)
                 f.write(f"{loss}\n")
                 f.flush()
                 iteration = state[3]
                 if (iteration % ckpt_interval) == (ckpt_interval - 1):
-                    ckpt_path = lvd.utils.ckpt_path(ckpt_dir, iteration+1, "dt")
-                    lvd.utils.save_checkpoint(state, ckpt_path)
+                    ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "dt")
+                    utils.save_checkpoint(state, ckpt_path)
 
