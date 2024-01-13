@@ -4,7 +4,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import cv2
-from . import frame_extractor
+import latentvideodiffusion.frame_extractor as frame_extractor
 
 def encode(video_path, vae_encoder, batch_size, key):
     encoded_frames = []
@@ -87,6 +87,6 @@ class LatentDataset:
             latent_file_path = os.path.join(self.directory_path, self.latent_files[latent_idx])
             all_latents = np.load(latent_file_path)
             latents.append(all_latents[local_idx])
-
+        
         return jnp.array(latents)
  

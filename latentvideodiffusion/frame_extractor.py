@@ -40,8 +40,30 @@ class FrameExtractor:
 
             if ret:
                 #resize video to specified target size
-                frame = cv2.resize(frame, self.target_size)
+                #frame = cv2.resize(frame, self.target_size)
                 frames.append(frame)
 
         array = jax.numpy.array(frames)
         return array.transpose(0,3,2,1)
+    
+
+def extract_frames(video_path, num_frames, key, target_size=(512, 300)):
+    cap = cv2.VideoCapture(video_path)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    print(str(total_frames)+ " total frames")
+    if num_frames > total_frames or num_frames <= 0:
+        raise ValueError("Invalid number of frames specified.")
+
+    random_indices = jax.random.randint(key, (num_frames,), 0, total_frames)
+
+    frames = []
+    for idx in random_indices:
+        ret, frame = cap.read()
+        if ret:
+            # Resize video to specified target size
+            # frame = cv2.resize(frame, target_size)
+            frames.append(frame)
+
+    cap.release()
+
+    return jax.numpy.array(frames).transpose(0, 3, 2, 1)

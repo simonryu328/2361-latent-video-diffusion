@@ -1,7 +1,7 @@
 {
   "seed": 42,
   "lvm": {
-    "n_latent": 1024
+    "n_latent": 2048
   },
   "transcode": {
     "bs": 32, 
@@ -12,14 +12,21 @@
     "sample": {
       "n_sample": 8
     },
+    "reconstruct": {
+      "n_sample": 4,
+      "video_file": "../../data/validation_resize/Sports_720P-675b_orig.mp4",
+      "generation_path": "../../generation"
+    },
     "train": {
-      "ckpt_dir": "../checkpoints",
+      "ckpt_dir": "checkpoints",
       "lr": 0.0001,
-      "ckpt_interval": 100,
-      "data_dir": "../data/single_recording",
-      "bs": 8,
-      "metrics_path": "../logs/loss_vae_single.txt",
-      "clip_norm": 10
+      "ckpt_interval": 5000,
+      "data_dir_train": "../../data/training_resize",
+      "data_dir_val": "../../data/validation_resize",
+      "bs": 64,
+      "metrics_path": "../../logs/loss_vae_213vid.txt",
+      "clip_norm": 10,
+      "kl_alpha": 1
     }
   },
   "dt": {
@@ -36,12 +43,13 @@
       "n_steps": 8
     },
     "train": {
-      "ckpt_dir": "../checkpoints",
+      "ckpt_dir": "../../checkpoints",
       "lr": 0.00005,
-      "ckpt_interval": 50,
-      "data_dir": "../data/latent",
+      "ckpt_interval": 8000,
+      "data_dir_train": "../../data/latent/training",
+      "data_dir_val": "../../data/latent/validation",
       "bs": 128,
-      "metrics_path": "../logs/loss_dt.txt",
+      "metrics_path": "../../logs/loss_dt_2048.txt",
       "clip_norm": 10
     }
   }

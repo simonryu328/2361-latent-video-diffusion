@@ -35,18 +35,48 @@ def load_checkpoint(filepath):
         state = pickle.load(f)
     return state
 
-def show_samples(samples):
+def show_samples(samples, generation_path, name="r"):
     i = 0
     for x in samples:
         y = jax.lax.clamp(0., x ,255.)
         frame = np.array(y.transpose(2,1,0),dtype=np.uint8)
-        file_path = os.path.join(os.path.expanduser('~'), "lvd-dev/2361-latent-video-diffusion/generation", "r_" + str(i) + ".jpg")
+        file_path = os.path.join(generation_path, name + "_" + str(i) + ".jpg")
         print(file_path)
         if cv2.imwrite(file_path, frame):
             print("saved video")
         i = i + 1
         #cv2.waitKey(0)
     #cv2.destroyAllWindows()
+def make_video(args):
+    # Get the list of image files in the folder
+    image_files = [f for f in os.listdir(args.data_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+    
+    # Sort the image files to ensure correct order in the video
+    image_files.sort()
+
+    if not image_files:
+        print("No image files found in the specified folder.")
+        return
+
+    # Read the first image to get dimensions
+    first_image = cv2.imread(os.path.join(args.data_dir, image_files[0]))
+    height, width, _ = first_image.shape
+    print(height)
+    # Create a VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use 'XVID' for .avi format
+    video_writer = cv2.VideoWriter(os.path.join(args.data_dir, args.name + ".mp4"), fourcc, 3, (width, height))
+
+    # Write each image to the video
+    for image_file in image_files:
+        image_path = os.path.join(args.data_dir, image_file)
+        print(image_path)
+        frame = cv2.imread(image_path)
+        video_writer.write(frame)
+
+    # Release the VideoWriter
+    video_writer.release()
+
+    print(f"Video saved at: {args.data_dir}")
 
 def load_config(config_file_path):
     try:

@@ -65,7 +65,7 @@ class VAEEncoder(eqx.Module):
     def __call__(self,x):
         h = (x/256)-0.5 #normalize pixel values (bs, 3, w, h)
         for layer in self.conv_layers:
-            print(str(h.shape) + " VAE Encoder Layer Shape")
+            #print(str(h.shape) + " VAE Encoder Layer Shape")
             h = layer(h) #( bs, 256,8,5)
         mean = self.mean_output(h.reshape(-1))
         log_var = -(jnp.abs(self.log_var_output(h.reshape(-1)))+2)
