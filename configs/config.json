@@ -23,7 +23,7 @@
       "ckpt_interval": 5000,
       "data_dir_train": "../../data/training_resize",
       "data_dir_val": "../../data/validation_resize",
-      "bs": 64,
+      "bs": 128,
       "metrics_path": "../../logs/loss_vae_213vid.txt",
       "clip_norm": 10,
       "kl_alpha": 1

@@ -11,7 +11,7 @@ setup(
     license='MIT',
     install_requires=[
         'numpy',
-        'cv2',
+        'opencv-python',
         'equinox',
         'jax',
         # Other dependencies

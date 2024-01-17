@@ -11,12 +11,17 @@ from jax.sharding import PositionalSharding
 from jax.sharding import PartitionSpec as P
 import optax
 
-import latentvideodiffusion as lvd
-import latentvideodiffusion.models.frame_vae as frame_vae
-import latentvideodiffusion.frame_extractor as fe
-import latentvideodiffusion.frame_transcode as ft
+# import latentvideodiffusion as lvd
+# import latentvideodiffusion.models.frame_vae as frame_vae
+# import latentvideodiffusion.frame_extractor as fe
+# import latentvideodiffusion.frame_transcode as ft
+
+from . import utils, frame_extractor, frame_transcode as ft
+from .models import frame_vae 
 
 import time
+
+kl_a = 1 #TODO fix loading of this value
 
 #Gaussian VAE primitives
 def gaussian_kl_divergence(p, q):
@@ -42,10 +47,9 @@ def concat_probabilties(p_a, p_b):
     return (mean, log_var)
 
 @jax.jit
-def vae_loss(vae, data, cfg, key):
+def vae_loss(vae, data, key):
 
     encoder, decoder = vae
-    a = cfg["vae"]["train"]["kl_alpha"]
     #Generate latent q distributions in z space
     q = jax.vmap(encoder)(data)
 
@@ -54,7 +58,7 @@ def vae_loss(vae, data, cfg, key):
 
     #Compute kl_loss terms
     z_prior = (0,0)
-    kl = a*gaussian_kl_divergence(q, z_prior)
+    kl = kl_a*gaussian_kl_divergence(q, z_prior)
 
     #Ground truth predictions
     p = jax.vmap(decoder)(z)
@@ -144,23 +148,23 @@ def sample(args, cfg):
     n_samples = cfg["vae"]["sample"]["n_sample"]
     n_latent = cfg["lvm"]["n_latent"]
 
-    state = lvd.utils.load_checkpoint(args.checkpoint)
+    state = utils.load_checkpoint(args.checkpoint)
     trained_vae = state[0]
 
     key = jax.random.PRNGKey(cfg["seed"])
     samples = sample_vae(n_latent, n_samples, trained_vae, key)
-    lvd.utils.show_samples(samples, args.name)
+    utils.show_samples(samples, args.name)
 
 def reconstruct(args, cfg):
     n_samples = cfg["vae"]["reconstruct"]["n_sample"]
     video_path = cfg["vae"]["reconstruct"]["video_file"]
     generation_path = cfg["vae"]["reconstruct"]["generation_path"]
-    state = lvd.utils.load_checkpoint(args.checkpoint)
+    state = utils.load_checkpoint(args.checkpoint)
     trained_vae = state[0]
 
     key = jax.random.PRNGKey(cfg["seed"])
     samples = reconstruct_vae(n_samples, video_path, trained_vae, key)
-    lvd.utils.show_samples(samples, generation_path ,args.name)
+    utils.show_samples(samples, generation_path ,args.name)
 
 def train(args, cfg):
     print("Entered VAE Training Function")
@@ -172,7 +176,7 @@ def train(args, cfg):
     batch_size = cfg["vae"]["train"]["bs"]
     clip_norm = cfg["vae"]["train"]["clip_norm"]
     metrics_path = cfg["vae"]["train"]["metrics_path"]
-    
+    kl_a = cfg["vae"]["train"]["kl_alpha"]
     adam_optimizer = optax.adam(lr)
     optimizer = optax.chain(adam_optimizer, optax.zero_nans(), optax.clip_by_global_norm(clip_norm))
     
@@ -185,7 +189,7 @@ def train(args, cfg):
         state = vae, opt_state, state_key, i
     else:
         checkpoint_path = args.checkpoint
-        state = lvd.utils.load_checkpoint(checkpoint_path)
+        state = utils.load_checkpoint(checkpoint_path)
     
     dir_name = os.path.dirname(metrics_path)
     if not os.path.exists(dir_name):
@@ -193,19 +197,19 @@ def train(args, cfg):
     ################### ORIGINAL TRAINING LOOP #####################
     with open(metrics_path,"a") as f:
         #TODO: Fix Frame extractor rng
-        with lvd.frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
-            with lvd.frame_extractor.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
-                for _ in lvd.utils.tqdm_inf():
+        with frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
+            with frame_extractor.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
+                for _ in utils.tqdm_inf():
                     # Process input data
-                    loop_time = time.time()
+                    #loop_time = time.time()
                     train_data = jnp.array(next(train_fe), dtype=jnp.float32)
                     val_data = jnp.array(next(val_fe), dtype=jnp.float32)
-                    print("Processed input data in ", time.time()-loop_time, " seconds")
-                    loop_time = time.time()
+                    #print("Processed input data in ", time.time()-loop_time, " seconds")
+                    #loop_time = time.time()
                     # Update state
-                    val_loss, _ = lvd.utils.update_state(state, val_data, optimizer, vae_loss)
-                    train_loss, state = lvd.utils.update_state(state, train_data, optimizer, vae_loss)
-                    print("Updated state in ", time.time()-loop_time, " seconds")
+                    val_loss, _ = utils.update_state(state, val_data, optimizer, vae_loss)
+                    train_loss, state = utils.update_state(state, train_data, optimizer, vae_loss)
+                    #print("Updated state in ", time.time()-loop_time, " seconds")
                     # Print or log training and validation losses
                     #print(f"Training Loss: {train_loss}, Validation Loss: {val_loss}")
 
@@ -214,8 +218,8 @@ def train(args, cfg):
                     f.flush()
                     iteration = state[3]
                     if (iteration % ckpt_interval) == (ckpt_interval - 1):
-                        ckpt_path = lvd.utils.ckpt_path(ckpt_dir, iteration+1, "vae")
-                        lvd.utils.save_checkpoint(state, ckpt_path)
+                        ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "vae")
+                        utils.save_checkpoint(state, ckpt_path)
                         print("---------CHECKPOINT SAVED----------")
 
     # ################ REVISED TRAINING LOOP WITH DATA PARALLELISM ###############
@@ -241,19 +245,19 @@ def train(args, cfg):
 
     # with open(metrics_path,"a") as f:
     #     #TODO: Fix Frame extractor rng
-    #     with lvd.frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
-    #         with lvd.frame_extractor.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
-    #             for _ in lvd.utils.tqdm_inf():
+    #     with frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
+    #         with frame_extractor.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
+    #             for _ in utils.tqdm_inf():
     #                 # Training iteration
     #                 train_data = jnp.array(next(train_fe), dtype=jnp.float32)
     #                 train_data = jax.device_put(train_data, sharding)
     #                 print(f"Shard shape: {sharding.shard_shape(train_data.shape)}")  
-    #                 train_loss, state = lvd.utils.update_state(state, train_data, optimizer, vae_loss)
+    #                 train_loss, state = utils.update_state(state, train_data, optimizer, vae_loss)
 
     #                 # Validation iteration
     #                 val_data = jnp.array(next(val_fe), dtype=jnp.float32)
     #                 val_data = jax.device_put(val_data, sharding)
-    #                 val_loss, _ = lvd.utils.update_state(state, val_data, optimizer, vae_loss)
+    #                 val_loss, _ = utils.update_state(state, val_data, optimizer, vae_loss)
 
     #                 # Print or log training and validation losses
     #                 #print(f"Training Loss: {train_loss}, Validation Loss: {val_loss}")
@@ -263,14 +267,14 @@ def train(args, cfg):
     #                 f.flush()
     #                 iteration = state[3]
     #                 if (iteration % ckpt_interval) == (ckpt_interval - 1):
-    #                     ckpt_path = lvd.utils.ckpt_path(ckpt_dir, iteration+1, "vae")
-    #                     lvd.utils.save_checkpoint(state, ckpt_path)
+    #                     ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "vae")
+    #                     utils.save_checkpoint(state, ckpt_path)
     #                     print("---------CHECKPOINT SAVED----------")
 
     ### FOR DEBUGGING ###
 
     # # Train data
-    # train_fe = lvd.frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2])
+    # train_fe = frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2])
     # train_data = jnp.array(next(train_fe), dtype=jnp.float32)
 
     # # Shard the data

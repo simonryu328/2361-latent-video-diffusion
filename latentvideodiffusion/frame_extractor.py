@@ -9,7 +9,17 @@ class FrameExtractor:
         self.video_files = [f for f in os.listdir(directory_path) if f.endswith(('.mp4', '.avi'))] # Adjust as needed
         self.batch_size = batch_size
         self.key = key
-        self.total_frames = sum(int(cv2.VideoCapture(os.path.join(directory_path, f)).get(cv2.CAP_PROP_FRAME_COUNT)) for f in self.video_files)
+        self.video_gbl_idxs = np.zeros(len(self.video_files)) #holds global idx value for every video 
+        self.total_frames = 0
+        i = 0
+        for f in self.video_files:
+            frame_count = int(cv2.VideoCapture(os.path.join(directory_path, f)).get(cv2.CAP_PROP_FRAME_COUNT))
+            self.total_frames += frame_count
+            self.video_gbl_idxs[i] = self.total_frames
+            i += 1
+        #video 1 = 20, video 2 = 31, video 3 = 17
+        #video_idx = [20, 51, 68]
+        #total_frams = 68
         self.cap = None
         self.target_size = target_size
 
@@ -26,13 +36,27 @@ class FrameExtractor:
     def __next__(self):
         self.key, idx_key = jax.random.split(self.key)
         idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, self.total_frames)
+        local_idx = 0
+        video_idx = 0
         frames = []
         for global_idx in idx_array:
-            local_idx = int(global_idx)
-            video_idx = 0
-            while local_idx >= int(cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx])).get(cv2.CAP_PROP_FRAME_COUNT)):
-                local_idx -= int(cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx])).get(cv2.CAP_PROP_FRAME_COUNT))
-                video_idx += 1
+            if(global_idx < self.video_gbl_idxs[0]):
+                local_idx = int(global_idx)
+                #frame from video 0
+            else:
+                video_idx = np.searchsorted(self.video_gbl_idxs, int(global_idx))
+                local_idx = int(global_idx) - self.video_gbl_idxs[video_idx-1]
+                #video_idx = [20, 51, 68]
+                #global_idx = 30
+                #video_idx = 1
+                #local_idx = 10
+                #frame 10 from video 1
+
+            # while local_idx >= int(cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx])).get(cv2.CAP_PROP_FRAME_COUNT)):
+            #     local_idx -= int(cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx])).get(cv2.CAP_PROP_FRAME_COUNT))
+            #     video_idx += 1
+            # print("frame", local_idx)
+            # print("video", video_idx) 
             self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
             ret, frame = self.cap.read()
