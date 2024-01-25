@@ -16,12 +16,12 @@ import optax
 # import latentvideodiffusion.frame_extractor as fe
 # import latentvideodiffusion.frame_transcode as ft
 
-from . import utils, frame_extractor, frame_transcode as ft
+from . import utils, frame_extractor as fe, frame_transcode as ft
 from .models import frame_vae 
 
 import time
 
-kl_a = 1 #TODO fix loading of this value
+kl_a = 0.8 #TODO fix loading of this value
 
 #Gaussian VAE primitives
 def gaussian_kl_divergence(p, q):
@@ -197,8 +197,8 @@ def train(args, cfg):
     ################### ORIGINAL TRAINING LOOP #####################
     with open(metrics_path,"a") as f:
         #TODO: Fix Frame extractor rng
-        with frame_extractor.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
-            with frame_extractor.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
+        with fe.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
+            with fe.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
                 for _ in utils.tqdm_inf():
                     # Process input data
                     #loop_time = time.time()

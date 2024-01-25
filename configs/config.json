@@ -18,15 +18,15 @@
       "generation_path": "../../generation"
     },
     "train": {
-      "ckpt_dir": "checkpoints",
+      "ckpt_dir": "../../checkpoints",
       "lr": 0.0001,
       "ckpt_interval": 5000,
       "data_dir_train": "../../data/training_resize",
       "data_dir_val": "../../data/validation_resize",
-      "bs": 128,
-      "metrics_path": "../../logs/loss_vae_213vid.txt",
+      "bs": 64,
+      "metrics_path": "../../logs/loss_vae_215_0.8KD.txt",
       "clip_norm": 10,
-      "kl_alpha": 1
+      "kl_alpha": 0.8
     }
   },
   "dt": {

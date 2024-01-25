@@ -17,9 +17,6 @@ class FrameExtractor:
             self.total_frames += frame_count
             self.video_gbl_idxs[i] = self.total_frames
             i += 1
-        #video 1 = 20, video 2 = 31, video 3 = 17
-        #video_idx = [20, 51, 68]
-        #total_frams = 68
         self.cap = None
         self.target_size = target_size
 
@@ -39,22 +36,14 @@ class FrameExtractor:
         local_idx = 0
         video_idx = 0
         frames = []
+        
         for global_idx in idx_array:
             if(global_idx < self.video_gbl_idxs[0]):
                 local_idx = int(global_idx)
                 #frame from video 0
             else:
                 video_idx = np.searchsorted(self.video_gbl_idxs, int(global_idx))
-                local_idx = int(global_idx) - self.video_gbl_idxs[video_idx-1]
-                #video_idx = [20, 51, 68]
-                #global_idx = 30
-                #video_idx = 1
-                #local_idx = 10
-                #frame 10 from video 1
-
-            # while local_idx >= int(cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx])).get(cv2.CAP_PROP_FRAME_COUNT)):
-            #     local_idx -= int(cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx])).get(cv2.CAP_PROP_FRAME_COUNT))
-            #     video_idx += 1
+                local_idx = int(global_idx) - int(self.video_gbl_idxs[video_idx-1])
             # print("frame", local_idx)
             # print("video", video_idx) 
             self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
@@ -63,8 +52,6 @@ class FrameExtractor:
             self.cap.release()
 
             if ret:
-                #resize video to specified target size
-                #frame = cv2.resize(frame, self.target_size)
                 frames.append(frame)
 
         array = jax.numpy.array(frames)
