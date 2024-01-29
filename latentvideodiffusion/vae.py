@@ -244,6 +244,7 @@ def train(args, cfg):
     print(f"\nMesh     : {mesh}")
     print(f"Sharding : {sharding}\n\n")
 
+    # okay
     with open(metrics_path,"a") as f:
         #TODO: Fix Frame extractor rng
         with fe.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
