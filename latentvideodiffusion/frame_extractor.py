@@ -49,11 +49,16 @@ class FrameExtractor:
             self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
             ret, frame = self.cap.read()
+            while not ret:
+                local_idx -= 1
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
+                ret, frame = self.cap.read()
+                print("retrying...")
             self.cap.release()
-
             if ret:
                 frames.append(frame)
 
+        print("LENGTH", len(frames))
         array = jax.numpy.array(frames)
         return array.transpose(0,3,2,1)
     

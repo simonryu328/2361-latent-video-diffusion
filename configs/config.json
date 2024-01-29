@@ -20,7 +20,7 @@
     "train": {
       "ckpt_dir": "../../checkpoints",
       "lr": 0.0001,
-      "ckpt_interval": 5000,
+      "ckpt_interval": 1000,
       "data_dir_train": "../../data/training_resize",
       "data_dir_val": "../../data/validation_resize",
       "bs": 64,
