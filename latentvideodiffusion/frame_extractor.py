@@ -30,35 +30,7 @@ class FrameExtractor:
     def __iter__(self):
         return self
     
-    # # Original
-    # def __next__(self):
-    #     self.key, idx_key = jax.random.split(self.key)
-    #     idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, self.total_frames)
-    #     local_idx = 0
-    #     video_idx = 0
-    #     frames = []
-        
-    #     for global_idx in idx_array:
-    #         if(global_idx < self.video_gbl_idxs[0]):
-    #             local_idx = int(global_idx)
-    #             #frame from video 0
-    #         else:
-    #             video_idx = np.searchsorted(self.video_gbl_idxs, int(global_idx))
-    #             local_idx = int(global_idx) - int(self.video_gbl_idxs[video_idx-1])
-    #         # print("frame", local_idx)
-    #         # print("video", video_idx) 
-    #         self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
-    #         self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
-    #         ret, frame = self.cap.read()
-    #         self.cap.release()
-
-    #         if ret:
-    #             frames.append(frame)
-
-    #     array = jax.numpy.array(frames)
-    #     return array.transpose(0,3,2,1)
-    
-    # With fallback
+    # Original
     def __next__(self):
         self.key, idx_key = jax.random.split(self.key)
         idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, self.total_frames)
@@ -75,19 +47,54 @@ class FrameExtractor:
                 local_idx = int(global_idx) - int(self.video_gbl_idxs[video_idx-1])
             # print("frame", local_idx)
             # print("video", video_idx) 
+            print(self.video_files[video_idx])
             self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
             ret, frame = self.cap.read()
-            while not ret:
-                local_idx -= 1
-                self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
-                ret, frame = self.cap.read()
             self.cap.release()
+
             if ret:
+                cv2.imwrite(f"img_{global_idx}_{local_idx}.jpg", frame)
                 frames.append(frame)
+
+        print("LENGTH OF FRAMES", len(frames))
+        for frame in frames:
+            print(frame.shape)
 
         array = jax.numpy.array(frames)
         return array.transpose(0,3,2,1)
+    
+    # # With fallback
+    # def __next__(self):
+    #     self.key, idx_key = jax.random.split(self.key)
+    #     idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, self.total_frames)
+    #     local_idx = 0
+    #     video_idx = 0
+    #     frames = []
+        
+    #     for global_idx in idx_array:
+    #         print("GLOBAL INDEX: ", self.video_gbl_idxs[0])
+    #         if(global_idx < self.video_gbl_idxs[0]):
+    #             local_idx = int(global_idx)
+    #             #frame from video 0
+    #         else:
+    #             video_idx = np.searchsorted(self.video_gbl_idxs, int(global_idx))
+    #             local_idx = int(global_idx) - int(self.video_gbl_idxs[video_idx-1])
+    #         # print("frame", local_idx)
+    #         # print("video", video_idx) 
+    #         self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
+    #         self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
+    #         ret, frame = self.cap.read()
+    #         while not ret:
+    #             local_idx -= 1
+    #             self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
+    #             ret, frame = self.cap.read()
+    #         self.cap.release()
+    #         if ret:
+    #             frames.append(frame)
+
+    #     array = jax.numpy.array(frames)
+    #     return array.transpose(0,3,2,1)
     
 
 def extract_frames(video_path, num_frames, key, target_size=(512, 300)):
