@@ -248,6 +248,8 @@ def train(args, cfg):
     with open(metrics_path,"a") as f:
         #TODO: Fix Frame extractor rng
         with fe.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
-            train_data = jnp.array(next(train_fe), dtype=jnp.float32)
-            print(type(train_data))
-            print(train_data.shape)
+            for _ in utils.tqdm_inf():
+                # Training iteration
+                train_data = jnp.array(next(train_fe), dtype=jnp.float32)
+                print(type(train_data))
+                print(train_data.shape)
