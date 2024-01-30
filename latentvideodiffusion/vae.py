@@ -244,12 +244,32 @@ def train(args, cfg):
     print(f"\nMesh     : {mesh}")
     print(f"Sharding : {sharding}\n\n")
 
-    # okay
     with open(metrics_path,"a") as f:
         #TODO: Fix Frame extractor rng
         with fe.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
-            for _ in utils.tqdm_inf():
-                # Training iteration
-                train_data = jnp.array(next(train_fe), dtype=jnp.float32)
-                print(type(train_data))
-                print(train_data.shape)
+            # with fe.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
+                for _ in utils.tqdm_inf():
+                    # Training iteration
+                    train_data = jnp.array(next(train_fe), dtype=jnp.float32)
+                    print(train_data.shape)
+
+                    # train_data = jax.device_put(train_data, sharding)
+                    # # print(f"Shard shape: {sharding.shard_shape(train_data.shape)}")  
+                    # train_loss, state = utils.update_state(state, train_data, optimizer, vae_loss)
+
+                    # # Validation iteration
+                    # val_data = jnp.array(next(val_fe), dtype=jnp.float32)
+                    # val_data = jax.device_put(val_data, sharding)
+                    # val_loss, _ = utils.update_state(state, val_data, optimizer, vae_loss)
+
+                    # # Print or log training and validation losses
+                    # #print(f"Training Loss: {train_loss}, Validation Loss: {val_loss}")
+
+                    # # Save metrics to file
+                    # f.write(f"{train_loss}\t{val_loss}\n")
+                    # f.flush()
+                    # iteration = state[3]
+                    # if (iteration % ckpt_interval) == (ckpt_interval - 1):
+                    #     ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "vae")
+                    #     utils.save_checkpoint(state, ckpt_path)
+                    #     print("---------CHECKPOINT SAVED----------")
