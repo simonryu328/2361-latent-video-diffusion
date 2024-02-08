@@ -3,7 +3,7 @@ import jax
 import numpy as np
 import os
 import csv
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 
 class FrameExtractor:
@@ -56,94 +56,116 @@ class FrameExtractor:
     def __iter__(self):
         return self
     
-    # # Original
-    # def __next__(self):
-    #     self.key, idx_key = jax.random.split(self.key)
-    #     idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, self.total_frames)
-    #     local_idx = 0
-    #     video_idx = 0
-    #     frames = []
-        
-    #     for global_idx in idx_array:
-    #         if(global_idx < self.video_gbl_idxs[0]):
-    #             local_idx = int(global_idx)
-    #             #frame from video 0
-    #         else:
-    #             video_idx = np.searchsorted(self.video_gbl_idxs, int(global_idx))
-    #             local_idx = int(global_idx) - int(self.video_gbl_idxs[video_idx-1])
-    #         # print("frame", local_idx)
-    #         # print("video", video_idx) 
-    #         self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
-    #         self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
-    #         ret, frame = self.cap.read()
-    #         self.cap.release()
-
-    #         if ret:
-    #             frames.append(frame)
-
-    #     array = jax.numpy.array(frames)
-    #     return array.transpose(0,3,2,1)
-
-    # def __next__(self):
-    #     self.key, idx_key, *keys = jax.random.split(self.key, self.batch_size + 2)
-    #     idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, len(self.data))
-
-    #     video_paths = []
-    #     frame_idxs = []
-    #     for key, idx in zip(keys, idx_array):
-    #         frame_idx = int(jax.random.randint(key, shape=(), minval=0, maxval=self.data[idx][1]))
-
-    #         frame_idxs.append(frame_idx)
-    #         video_paths.append(self.data[idx][0])
-
-    #     print(len(video_paths))
-    #     print(len(frame_idxs))
-
-    #     print(video_paths)
-    #     print(frame_idxs)
-        
-    #     def process_frame(video_path, frame_idx):
-    #         self.cap = cv2.VideoCapture(os.path.join(self.directory_path, video_path))
-    #         self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-    #         ret, frame = self.cap.read()
-    #         self.cap.release()
-
-    #         if ret:
-    #             return frame
-    #         else:
-    #             return None
-
-
-    #     # video_paths = [self.data[idx] for idx in id]
-    #     # frame_counts = [row[1] for row in self.data]
-    #     # frame_pos_array = [jax.random.randint(key, shape=(), minval=0, maxval=frame_count) for key, frame_count in zip(keys, frame_counts)]
-            
-    #     l  = list(zip(video_paths, frame_idxs))
-    #     print(len(l))
-    #     print(l)
-
-    #     with ProcessPoolExecutor() as executor:
-    #         # results = [executor.submit(lambda p: process_frame(*p), [video_path, idx]) for video_path, idx in zip(video_paths, frame_idxs)]
-    #         results = list(executor.map(lambda p: process_frame(*p), list(zip(video_paths, frame_idxs))))
-
-    #     # for f in as_completed(results):
-    #     #     if f.result() is not None: frames.append(f.result())
-
-    #     frames = [result for result in results if result is not None]
-    #     array = jax.numpy.array(frames)
-    #     return array.transpose(0,3,2,1)
-        
-
-    #     # Create a pool of processes
-    #     # with Pool() as pool:
-    #     #     results = pool.starmap(self.process_frame, zip(video_paths, frame_idxs))
-
-    #     # frames = [result for result in results if result is not None]
-    #     # array = jax.numpy.array(frames)
-    #     # return array.transpose(0,3,2,1)
-    
     # Original
     def __next__(self):
+        self.key, idx_key = jax.random.split(self.key)
+        idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, self.total_frames)
+        local_idx = 0
+        video_idx = 0
+        frames = []
+        
+        for global_idx in idx_array:
+            if(global_idx < self.video_gbl_idxs[0]):
+                local_idx = int(global_idx)
+                #frame from video 0
+            else:
+                video_idx = np.searchsorted(self.video_gbl_idxs, int(global_idx))
+                local_idx = int(global_idx) - int(self.video_gbl_idxs[video_idx-1])
+            # print("frame", local_idx)
+            # print("video", video_idx) 
+            self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.video_files[video_idx]))
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, local_idx)
+            ret, frame = self.cap.read()
+            self.cap.release()
+
+            if ret:
+                frames.append(frame)
+
+        array = jax.numpy.array(frames)
+        return array.transpose(0,3,2,1)
+    
+    # def process_frame(self, video_path, frame_idx):
+    #     self.cap = cv2.VideoCapture(os.path.join(self.directory_path, video_path))
+    #     self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+    #     ret, frame = self.cap.read()
+    #     self.cap.release()
+
+    #     if ret:
+    #         return frame
+    #     else:
+    #         return None
+        
+    
+    def process_frame(self, idx):
+        self.key, frame_key = jax.random.split(self.key)
+        frame_idx = int(jax.random.randint(frame_key, shape=(), minval=0, maxval=self.data[idx][1]))
+
+        self.cap = cv2.VideoCapture(os.path.join(self.directory_path, self.data[idx][0]))
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = self.cap.read()
+        self.cap.release()
+
+        if ret:
+            return frame
+        else:
+            return None
+    
+    def _next_multiprocess(self):
+        self.key, idx_key = jax.random.split(self.key)
+        idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, len(self.data))
+
+        with Pool(self.batch_size) as pool:
+            results = pool.map(self.process_frame, idx_array)
+
+        frames = [result for result in results if result is not None]
+        array = jax.numpy.array(frames)
+        return array.transpose(0,3,2,1)
+
+    def _next_multithread(self):
+        self.key, idx_key, *keys = jax.random.split(self.key, self.batch_size + 2)
+        idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, len(self.data))
+
+        video_paths = []
+        frame_idxs = []
+        for key, idx in zip(keys, idx_array):
+            frame_idx = int(jax.random.randint(key, shape=(), minval=0, maxval=self.data[idx][1]))
+
+            frame_idxs.append(frame_idx)
+            video_paths.append(self.data[idx][0])
+        
+        def process_frame(video_path, frame_idx):
+            self.cap = cv2.VideoCapture(os.path.join(self.directory_path, video_path))
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = self.cap.read()
+            self.cap.release()
+
+            if ret:
+                return frame
+            else:
+                return None
+
+        with ProcessPoolExecutor() as executor:
+            # results = [executor.submit(lambda p: process_frame(*p), [video_path, idx]) for video_path, idx in zip(video_paths, frame_idxs)]
+            results = list(executor.map(lambda p: process_frame(*p), list(zip(video_paths, frame_idxs))))
+
+        # for f in as_completed(results):
+        #     if f.result() is not None: frames.append(f.result())
+
+        frames = [result for result in results if result is not None]
+        array = jax.numpy.array(frames)
+        return array.transpose(0,3,2,1)
+        
+
+        # Create a pool of processes
+        # with Pool() as pool:
+        #     results = pool.starmap(self.process_frame, zip(video_paths, frame_idxs))
+
+        # frames = [result for result in results if result is not None]
+        # array = jax.numpy.array(frames)
+        # return array.transpose(0,3,2,1)
+    
+    # Original
+    def _next_original(self):
         self.key, idx_key, *keys = jax.random.split(self.key, self.batch_size + 2)
         idx_array = jax.random.randint(idx_key, (self.batch_size,), 0, len(self.data))
         frames = []
@@ -163,6 +185,9 @@ class FrameExtractor:
         
         array = jax.numpy.array(frames)
         return array.transpose(0,3,2,1)
+    
+    def __next__(self):
+        return self._next_multiprocess()
     
     # # With fallback
     # def __next__(self):
