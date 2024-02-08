@@ -230,14 +230,14 @@ def train(args, cfg):
     print(f"Running on {num_devices} devices")
 
     # Get the device array
-    devices = mesh_utils.create_device_mesh((num_devices,)).reshape(4,2)
+    devices = mesh_utils.create_device_mesh((num_devices,))
     print(f"Device Array: \n\n{devices}\n")
 
     # Create a mesh from the device array
     mesh = Mesh(devices, axis_names=("ax1", "ax2"))
 
     # Define sharding with a partiton spec
-    sharding = NamedSharding(mesh, P("ax1", None, "ax2", None))
+    sharding = NamedSharding(mesh, P("ax1", None, None, None))
 
     print(f"Number of logical devices: {len(devices)}")
     print(f"Shape of device array    : {devices.shape}")
@@ -247,29 +247,29 @@ def train(args, cfg):
     with open(metrics_path,"a") as f:
         #TODO: Fix Frame extractor rng
         with fe.FrameExtractor(video_paths_train, batch_size, state[2]) as train_fe:
-            # with fe.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
+            with fe.FrameExtractor(video_paths_val, batch_size, state[2]) as val_fe:
                 for _ in utils.tqdm_inf():
                     # Training iteration
                     train_data = jnp.array(next(train_fe), dtype=jnp.float32)
                     print(train_data.shape)
 
-                    # train_data = jax.device_put(train_data, sharding)
-                    # # print(f"Shard shape: {sharding.shard_shape(train_data.shape)}")  
-                    # train_loss, state = utils.update_state(state, train_data, optimizer, vae_loss)
+                    train_data = jax.device_put(train_data, sharding)
+                    print(f"Shard shape: {sharding.shard_shape(train_data.shape)}")  
+                    train_loss, state = utils.update_state(state, train_data, optimizer, vae_loss)
 
-                    # # Validation iteration
-                    # val_data = jnp.array(next(val_fe), dtype=jnp.float32)
-                    # val_data = jax.device_put(val_data, sharding)
-                    # val_loss, _ = utils.update_state(state, val_data, optimizer, vae_loss)
+                    # Validation iteration
+                    val_data = jnp.array(next(val_fe), dtype=jnp.float32)
+                    val_data = jax.device_put(val_data, sharding)
+                    val_loss, _ = utils.update_state(state, val_data, optimizer, vae_loss)
 
-                    # # Print or log training and validation losses
-                    # #print(f"Training Loss: {train_loss}, Validation Loss: {val_loss}")
+                    # Print or log training and validation losses
+                    #print(f"Training Loss: {train_loss}, Validation Loss: {val_loss}")
 
-                    # # Save metrics to file
-                    # f.write(f"{train_loss}\t{val_loss}\n")
-                    # f.flush()
-                    # iteration = state[3]
-                    # if (iteration % ckpt_interval) == (ckpt_interval - 1):
-                    #     ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "vae")
-                    #     utils.save_checkpoint(state, ckpt_path)
-                    #     print("---------CHECKPOINT SAVED----------")
+                    # Save metrics to file
+                    f.write(f"{train_loss}\t{val_loss}\n")
+                    f.flush()
+                    iteration = state[3]
+                    if (iteration % ckpt_interval) == (ckpt_interval - 1):
+                        ckpt_path = utils.ckpt_path(ckpt_dir, iteration+1, "vae")
+                        utils.save_checkpoint(state, ckpt_path)
+                        print("---------CHECKPOINT SAVED----------")
